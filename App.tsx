@@ -164,7 +164,7 @@ const App: React.FC = () => {
             <p className="text-sm">Bringing the light of the Quran to your digital life.</p>
           </div>
           <div className="text-center md:text-right space-y-2">
-            <p className="text-sm">© {new Date().getFullYear()} Al-Quran Digital Companion. All rights reserved.</p>
+            <p className="text-sm">© {new Date().getFullYear()} Al-Quran Digital Companion. All rights reserved. Zurisham Yunus</p>
             <p className="text-xs">This app uses content references for educational purposes.</p>
           </div>
         </div>
