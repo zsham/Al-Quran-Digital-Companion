@@ -44,13 +44,51 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
     error: null
   });
 
-  // Local state for translations: { [ayahNumber]: { text, loading } }
-  const [verseTranslations, setVerseTranslations] = useState<Record<number, { text: string; loading: boolean }>>({});
+  const [verseTranslations, setVerseTranslations] = useState<Record<number, { text: string; loading: boolean; quotaError?: boolean }>>({});
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleOpenSelectKey = async () => {
+    if (window.aistudio?.openSelectKey) {
+      await window.aistudio.openSelectKey();
+      // Reload current tab content after key selection
+      if (activeTab === 'insights') fetchInsight();
+    }
+  };
+
+  const fetchInsight = async () => {
+    if (!juz) return;
+    setInsight({ loading: true, content: '', error: null });
+    try {
+      const summary = await getJuzSummary(juz.id, juz.name);
+      if (summary === "QUOTA_EXCEEDED") {
+        setInsight({ loading: false, content: '', error: 'QUOTA_EXCEEDED' });
+      } else {
+        setInsight({ loading: false, content: summary, error: null });
+      }
+    } catch (err) {
+      setInsight({ loading: false, content: '', error: 'Failed to load AI insights.' });
+    }
+  };
+
+  const fetchVerses = async () => {
+    if (!juz) return;
+    setReading({ loading: true, verses: [], error: null });
+    try {
+      const response = await fetch(`https://api.alquran.cloud/v1/juz/${juz.id}/quran-simple`);
+      const data = await response.json();
+      if (data.code === 200) {
+        setReading({ loading: false, verses: data.data.ayahs, error: null });
+      } else {
+        throw new Error('API Error');
+      }
+    } catch (err) {
+      setReading({ loading: false, verses: [], error: 'Failed to load Quran text. Please check your connection.' });
+    }
+  };
 
   useEffect(() => {
     if (juz) {
@@ -59,32 +97,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
       setDuration(0);
       setActiveTab('quran');
       setVerseTranslations({});
-      
-      const fetchInsight = async () => {
-        setInsight({ loading: true, content: '', error: null });
-        try {
-          const summary = await getJuzSummary(juz.id, juz.name);
-          setInsight({ loading: false, content: summary, error: null });
-        } catch (err) {
-          setInsight({ loading: false, content: '', error: 'Failed to load AI insights.' });
-        }
-      };
-
-      const fetchVerses = async () => {
-        setReading({ loading: true, verses: [], error: null });
-        try {
-          const response = await fetch(`https://api.alquran.cloud/v1/juz/${juz.id}/quran-simple`);
-          const data = await response.json();
-          if (data.code === 200) {
-            setReading({ loading: false, verses: data.data.ayahs, error: null });
-          } else {
-            throw new Error('API Error');
-          }
-        } catch (err) {
-          setReading({ loading: false, verses: [], error: 'Failed to load Quran text. Please check your connection.' });
-        }
-      };
-
       fetchInsight();
       fetchVerses();
     }
@@ -102,7 +114,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
   };
 
   const handleTranslate = async (ayahNumber: number, text: string) => {
-    // If already translating or translated, don't do anything
     if (verseTranslations[ayahNumber]?.loading) return;
 
     setVerseTranslations(prev => ({
@@ -112,10 +123,17 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
 
     const result = await translateVerse(text, targetLanguage);
 
-    setVerseTranslations(prev => ({
-      ...prev,
-      [ayahNumber]: { text: result, loading: false }
-    }));
+    if (result === "QUOTA_EXCEEDED") {
+      setVerseTranslations(prev => ({
+        ...prev,
+        [ayahNumber]: { text: '', loading: false, quotaError: true }
+      }));
+    } else {
+      setVerseTranslations(prev => ({
+        ...prev,
+        [ayahNumber]: { text: result, loading: false }
+      }));
+    }
   };
 
   const formatTime = (time: number) => {
@@ -321,12 +339,23 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
                         </div>
 
                         {/* Translation Display */}
-                        {(verseTranslations[ayah.number]?.text || verseTranslations[ayah.number]?.loading) && (
+                        {(verseTranslations[ayah.number]?.text || verseTranslations[ayah.number]?.loading || verseTranslations[ayah.number]?.quotaError) && (
                           <div className="w-full bg-slate-50/80 p-4 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
                             {verseTranslations[ayah.number]?.loading ? (
                               <div className="flex items-center space-x-2 text-slate-400">
                                 <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
                                 <span className="text-xs italic">AI Translating to {targetLanguage}...</span>
+                              </div>
+                            ) : verseTranslations[ayah.number]?.quotaError ? (
+                              <div className="flex flex-col items-center justify-center space-y-2 py-2">
+                                <p className="text-xs text-red-500 font-bold italic">Rate limit exceeded for current key.</p>
+                                <button 
+                                  onClick={handleOpenSelectKey}
+                                  className="text-[10px] bg-red-500 text-white px-3 py-1 rounded-full font-bold uppercase hover:bg-red-600 transition-all"
+                                >
+                                  Use My Own API Key
+                                </button>
+                                <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="text-[9px] text-slate-400 underline">About Gemini API Billing</a>
                               </div>
                             ) : (
                               <div className="flex flex-col">
@@ -355,6 +384,23 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
                     <div className="absolute inset-0 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                   <p className="text-slate-400 text-sm font-medium italic animate-pulse">Gemini is reflecting on this Juz...</p>
+                </div>
+              ) : insight.error === 'QUOTA_EXCEEDED' ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-6 bg-amber-50 rounded-3xl border border-amber-100 p-8 text-center">
+                  <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-3xl">⚠️</div>
+                  <div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">AI Rate Limit Reached</h3>
+                    <p className="text-slate-600 text-sm max-w-md mx-auto">The community AI key has reached its usage limit. To continue using AI Insights and Translations without interruptions, please use your own API key.</p>
+                  </div>
+                  <div className="flex flex-col space-y-3 w-full max-w-xs">
+                    <button 
+                      onClick={handleOpenSelectKey}
+                      className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl transition-all shadow-md active:scale-95"
+                    >
+                      Select My Own API Key
+                    </button>
+                    <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" rel="noreferrer" className="text-xs text-slate-400 underline">Learn about API project billing</a>
+                  </div>
                 </div>
               ) : insight.error ? (
                 <div className="p-6 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-center italic">

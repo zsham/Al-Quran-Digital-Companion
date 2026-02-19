@@ -198,14 +198,16 @@ const App: React.FC = () => {
         <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between items-center">
           <div className="mb-6 md:mb-0">
             <div className="flex items-center space-x-2 text-white mb-2">
-              <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center font-bold text-slate-900">Q</div>
-              <span className="text-xl font-bold">Quran Digital</span>
+              <div className="w-8 h-8 bg-amber-500 rounded flex items-center justify-center font-bold text-slate-900">P</div>
+              <span className="text-xl font-bold tracking-tight">Pablo84Studio</span>
             </div>
             <p className="text-sm">Bringing the light of the Quran to your digital life.</p>
           </div>
           <div className="text-center md:text-right space-y-2">
-            <p className="text-sm">© {new Date().getFullYear()} Al-Quran Digital Companion. All rights reserved. Zurisham Yunus</p>
-            <p className="text-xs">This app uses content references for educational purposes.</p>
+            <p className="text-sm font-medium text-slate-300">
+              © {new Date().getFullYear()} Al-Quran Companion. All rights reserved. <span className="text-amber-400">Pablo84Studio</span>
+            </p>
+            <p className="text-xs text-slate-500">Modern Islamic Digital Arts & Solutions</p>
           </div>
         </div>
       </footer>
