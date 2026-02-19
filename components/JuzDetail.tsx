@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState, useRef } from 'react';
-import { JuzData, InsightState } from '../types';
+import { JuzData, InsightState, Verse, ReadingState } from '../types';
 import { getJuzSummary } from '../services/geminiService';
 
 interface JuzDetailProps {
@@ -10,10 +10,18 @@ interface JuzDetailProps {
   onToggleBookmark: (id: number) => void;
 }
 
+type TabType = 'quran' | 'insights';
+
 const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onToggleBookmark }) => {
+  const [activeTab, setActiveTab] = useState<TabType>('quran');
   const [insight, setInsight] = useState<InsightState>({
     loading: false,
     content: '',
+    error: null
+  });
+  const [reading, setReading] = useState<ReadingState>({
+    loading: false,
+    verses: [],
     error: null
   });
 
@@ -24,11 +32,13 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
 
   useEffect(() => {
     if (juz) {
-      // Reset audio state when Juz changes
+      // Reset states
       setIsPlaying(false);
       setCurrentTime(0);
       setDuration(0);
+      setActiveTab('quran');
       
+      // Fetch Insight
       const fetchInsight = async () => {
         setInsight({ loading: true, content: '', error: null });
         try {
@@ -38,7 +48,25 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
           setInsight({ loading: false, content: '', error: 'Failed to load AI insights.' });
         }
       };
+
+      // Fetch Quran Text
+      const fetchVerses = async () => {
+        setReading({ loading: true, verses: [], error: null });
+        try {
+          const response = await fetch(`https://api.alquran.cloud/v1/juz/${juz.id}/quran-simple`);
+          const data = await response.json();
+          if (data.code === 200) {
+            setReading({ loading: false, verses: data.data.ayahs, error: null });
+          } else {
+            throw new Error('API Error');
+          }
+        } catch (err) {
+          setReading({ loading: false, verses: [], error: 'Failed to load Quran text. Please check your connection.' });
+        }
+      };
+
       fetchInsight();
+      fetchVerses();
     }
   }, [juz]);
 
@@ -53,26 +81,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setCurrentTime(audioRef.current.currentTime);
-    }
-  };
-
-  const handleLoadedMetadata = () => {
-    if (audioRef.current) {
-      setDuration(audioRef.current.duration);
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = parseFloat(e.target.value);
-    if (audioRef.current) {
-      audioRef.current.currentTime = time;
-      setCurrentTime(time);
-    }
-  };
-
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
@@ -82,17 +90,17 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
   if (!juz) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-hidden">
-      <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md overflow-hidden">
+      <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh]">
+        
         {/* Header Section */}
-        <div className="relative shrink-0 h-48 bg-emerald-800 bg-islamic-pattern p-8 flex flex-col justify-end">
+        <div className="relative shrink-0 h-32 sm:h-40 bg-emerald-800 bg-islamic-pattern p-6 flex flex-col justify-end shadow-md">
           <div className="absolute top-4 right-4 flex space-x-2 z-10">
             <button 
               onClick={() => onToggleBookmark(juz.id)}
-              className={`p-2 rounded-full transition-colors ${isBookmarked ? 'bg-amber-400 text-emerald-900' : 'bg-white/20 text-white hover:bg-white/30'}`}
-              title={isBookmarked ? "Remove from Bookmarks" : "Add to Bookmarks"}
+              className={`p-2.5 rounded-full transition-all active:scale-90 shadow-sm ${isBookmarked ? 'bg-amber-400 text-emerald-900' : 'bg-white/10 text-white hover:bg-white/20'}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </button>
@@ -101,9 +109,9 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
                 if (audioRef.current) audioRef.current.pause();
                 onClose();
               }}
-              className="text-white hover:bg-white/20 p-2 rounded-full transition-colors"
+              className="text-white bg-white/10 hover:bg-white/20 p-2.5 rounded-full transition-all shadow-sm"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -111,137 +119,171 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
           
           <div className="flex justify-between items-end relative z-0">
             <div>
-              <span className="text-emerald-300 text-sm font-bold uppercase tracking-widest">Juz {juz.id}</span>
-              <h2 className="text-4xl font-bold text-white">{juz.name}</h2>
+              <span className="text-emerald-300 text-xs font-bold uppercase tracking-widest bg-emerald-900/50 px-2 py-0.5 rounded shadow-inner">Juz {juz.id}</span>
+              <h2 className="text-2xl sm:text-3xl font-bold text-white mt-1 drop-shadow-sm">{juz.name}</h2>
             </div>
-            <div className="text-6xl arabic-font text-white/40 mb-[-1rem] select-none">{juz.arabicName}</div>
+            <div className="text-5xl sm:text-6xl arabic-font text-white/30 mb-[-0.5rem] select-none pointer-events-none">{juz.arabicName}</div>
           </div>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="bg-slate-50 border-b border-slate-200 px-4 flex space-x-1 sm:space-x-6 shrink-0 overflow-x-auto">
+          <button 
+            onClick={() => setActiveTab('quran')}
+            className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'quran' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            <span className="text-lg">📖</span>
+            <span>Quran (Read & Listen)</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('insights')}
+            className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'insights' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+          >
+            <span className="text-lg">✨</span>
+            <span>AI Insights</span>
+          </button>
         </div>
         
         {/* Scrollable Content */}
-        <div className="p-8 overflow-y-auto flex-grow">
-          {/* Audio Player Component */}
-          <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 mb-8 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-emerald-800 font-bold flex items-center">
-                <span className="mr-2">🎧</span> Juz Recitation
-              </h4>
-              <div className="flex items-center space-x-1">
-                {isPlaying && (
-                  <div className="flex items-end space-x-0.5 h-4 mb-1">
-                    <div className="w-1 bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-1 bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-1 bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        <div className="flex-grow overflow-y-auto bg-white relative">
+          
+          {/* TAB: QURAN (Read & Listen Combined) */}
+          {activeTab === 'quran' && (
+            <div className="flex flex-col min-h-full">
+              {/* Sticky Audio Player */}
+              <div className="sticky top-0 z-20 bg-emerald-50/95 backdrop-blur-sm border-b border-emerald-100 p-4 sm:p-6 shadow-sm">
+                <audio 
+                  ref={audioRef}
+                  src={juz.link}
+                  onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+                  onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+                  onEnded={() => setIsPlaying(false)}
+                />
+
+                <div className="max-w-3xl mx-auto flex items-center space-x-4 sm:space-x-8">
+                  <button 
+                    onClick={togglePlay}
+                    className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-90"
+                  >
+                    {isPlaying ? (
+                      <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                    ) : (
+                      <svg className="h-8 w-8 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    )}
+                  </button>
+
+                  <div className="flex-grow">
+                    <div className="flex justify-between items-center mb-1">
+                       <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-tighter">Audio Recitation</span>
+                       {isPlaying && (
+                        <div className="flex items-end space-x-0.5 h-3">
+                          <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                       )}
+                    </div>
+                    <input 
+                      type="range"
+                      min="0"
+                      max={duration || 0}
+                      value={currentTime}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        if (audioRef.current) audioRef.current.currentTime = val;
+                        setCurrentTime(val);
+                      }}
+                      className="w-full h-1.5 bg-emerald-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
+                    />
+                    <div className="flex justify-between text-[10px] font-bold text-emerald-600/70 mt-1 uppercase">
+                      <span>{formatTime(currentTime)}</span>
+                      <span>{formatTime(duration)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quran Text Content */}
+              <div className="p-4 sm:p-8 pt-6">
+                {reading.loading ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                    <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-slate-400 font-medium italic">Opening the Book of Allah...</p>
+                  </div>
+                ) : reading.error ? (
+                  <div className="bg-red-50 p-6 rounded-2xl text-red-600 text-center mx-auto max-w-md border border-red-100">
+                    <p className="font-medium">{reading.error}</p>
+                  </div>
+                ) : (
+                  <div className="max-w-3xl mx-auto space-y-10">
+                    {reading.verses.map((ayah, index) => (
+                      <div key={index} className="group border-b border-slate-50 pb-10 last:border-0 hover:bg-slate-50/30 transition-colors px-2 rounded-xl">
+                        <div className="flex justify-between items-center mb-6">
+                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm border border-emerald-100">
+                            {ayah.surah.englishName} • {ayah.numberInSurah}
+                          </span>
+                          <button 
+                             onClick={() => {
+                               navigator.clipboard.writeText(ayah.text);
+                               // Simple toast feedback logic could go here
+                             }}
+                             className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white rounded-full text-slate-400 hover:text-emerald-600 shadow-sm transition-all"
+                             title="Copy Ayah"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                          </button>
+                        </div>
+                        <p className="arabic-font text-3xl sm:text-5xl text-right leading-[1.8] text-slate-800 dir-rtl antialiased">
+                          {ayah.text}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">
-                  {isPlaying ? 'Now Playing' : 'Paused'}
-                </span>
               </div>
             </div>
+          )}
 
-            <audio 
-              ref={audioRef}
-              src={juz.link}
-              onTimeUpdate={handleTimeUpdate}
-              onLoadedMetadata={handleLoadedMetadata}
-              onEnded={() => setIsPlaying(false)}
-            />
-
-            <div className="flex flex-col space-y-4">
-              <div className="flex items-center space-x-4">
-                <button 
-                  onClick={togglePlay}
-                  className="w-14 h-14 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-95"
-                >
-                  {isPlaying ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </button>
-
-                <div className="flex-grow flex flex-col">
-                  <input 
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-emerald-600 mb-2"
-                  />
-                  <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                    <span>{formatTime(currentTime)}</span>
-                    <span>{formatTime(duration)}</span>
+          {/* TAB: INSIGHTS */}
+          {activeTab === 'insights' && (
+            <div className="p-4 sm:p-8 max-w-3xl mx-auto">
+              {insight.loading ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                  <div className="relative w-12 h-12">
+                    <div className="absolute inset-0 border-4 border-emerald-100 rounded-full"></div>
+                    <div className="absolute inset-0 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                  <p className="text-slate-400 text-sm font-medium italic animate-pulse">Gemini is reflecting on this Juz...</p>
+                </div>
+              ) : insight.error ? (
+                <div className="p-6 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-center italic">
+                  {insight.error}
+                </div>
+              ) : (
+                <div className="bg-emerald-50/40 p-6 sm:p-10 rounded-3xl border border-emerald-100/50 shadow-inner">
+                  <div className="prose prose-emerald max-w-none text-slate-700 leading-relaxed text-base whitespace-pre-wrap">
+                    {insight.content}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">Starts At</span>
-              <p className="text-slate-800 font-bold">{juz.startSurah}</p>
-            </div>
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest block mb-1">Ends At</span>
-              <p className="text-slate-800 font-bold">{juz.endSurah}</p>
-            </div>
-          </div>
-
-          <div className="mb-4">
-            <h4 className="flex items-center text-emerald-800 font-bold mb-4">
-              <span className="bg-emerald-100 p-1 rounded mr-2">✨</span>
-              AI Spiritual Insights
-            </h4>
-            
-            {insight.loading ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-4">
-                <div className="relative w-12 h-12">
-                   <div className="absolute inset-0 border-4 border-emerald-100 rounded-full"></div>
-                   <div className="absolute inset-0 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <p className="text-slate-400 text-sm italic font-medium animate-pulse">Gemini is reflecting on this Juz...</p>
-              </div>
-            ) : insight.error ? (
-              <div className="p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-sm italic">
-                {insight.error}
-              </div>
-            ) : (
-              <div className="prose prose-emerald max-w-none text-slate-600 leading-relaxed text-sm whitespace-pre-wrap bg-emerald-50/30 p-6 rounded-3xl border border-emerald-100">
-                {insight.content}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Footer Actions */}
-        <div className="p-6 bg-white border-t border-slate-100 flex items-center justify-between shrink-0">
-          <a 
-            href={juz.link}
-            download
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-emerald-700 font-bold text-sm flex items-center hover:text-emerald-800 transition-colors"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-            Download MP3
-          </a>
+        {/* Persistent Footer */}
+        <div className="p-4 sm:p-6 bg-white border-t border-slate-100 flex items-center justify-between shrink-0 shadow-[0_-4px_10px_rgba(0,0,0,0.03)]">
+          <div className="hidden sm:block">
+            <p className="text-xs font-extrabold text-slate-300 uppercase tracking-widest mb-0.5">Coverage</p>
+            <p className="text-sm font-bold text-slate-600">{juz.startSurah} — {juz.endSurah}</p>
+          </div>
           <button 
             onClick={() => {
               if (audioRef.current) audioRef.current.pause();
               onClose();
             }}
-            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-200"
+            className="w-full sm:w-auto px-12 py-3.5 bg-slate-900 hover:bg-emerald-950 text-white font-bold rounded-2xl transition-all shadow-lg active:scale-95"
           >
-            Close
+            Close Viewer
           </button>
         </div>
       </div>

@@ -14,3 +14,19 @@ export interface InsightState {
   content: string;
   error: string | null;
 }
+
+export interface Verse {
+  number: number;
+  text: string;
+  surah: {
+    name: string;
+    englishName: string;
+  };
+  numberInSurah: number;
+}
+
+export interface ReadingState {
+  loading: boolean;
+  verses: Verse[];
+  error: string | null;
+}
