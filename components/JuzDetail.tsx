@@ -151,7 +151,7 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
           {activeTab === 'quran' && (
             <div className="flex flex-col min-h-full">
               {/* Sticky Audio Player */}
-              <div className="sticky top-0 z-20 bg-emerald-50/95 backdrop-blur-sm border-b border-emerald-100 p-4 sm:p-6 shadow-sm">
+              <div className="sticky top-0 z-20 bg-emerald-50/95 backdrop-blur-sm border-b border-emerald-100 p-4 sm:p-5 shadow-sm">
                 <audio 
                   ref={audioRef}
                   src={juz.link}
@@ -160,23 +160,23 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
                   onEnded={() => setIsPlaying(false)}
                 />
 
-                <div className="max-w-3xl mx-auto flex items-center space-x-4 sm:space-x-8">
+                <div className="max-w-2xl mx-auto flex items-center space-x-4 sm:space-x-6">
                   <button 
                     onClick={togglePlay}
-                    className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl shadow-lg shadow-emerald-200 transition-all active:scale-90"
+                    className="shrink-0 w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-md transition-all active:scale-90"
                   >
                     {isPlaying ? (
-                      <svg className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
+                      <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
                     ) : (
-                      <svg className="h-8 w-8 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                      <svg className="h-6 w-6 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
                     )}
                   </button>
 
                   <div className="flex-grow">
                     <div className="flex justify-between items-center mb-1">
-                       <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-tighter">Audio Recitation</span>
+                       <span className="text-[9px] font-extrabold text-emerald-700 uppercase tracking-tighter">Audio Recitation</span>
                        {isPlaying && (
-                        <div className="flex items-end space-x-0.5 h-3">
+                        <div className="flex items-end space-x-0.5 h-2.5">
                           <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '0ms' }}></div>
                           <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
                           <div className="w-0.5 bg-emerald-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
@@ -204,7 +204,7 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
               </div>
 
               {/* Quran Text Content */}
-              <div className="p-4 sm:p-8 pt-6">
+              <div className="p-4 sm:p-8 pt-4">
                 {reading.loading ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin"></div>
@@ -215,27 +215,37 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
                     <p className="font-medium">{reading.error}</p>
                   </div>
                 ) : (
-                  <div className="max-w-3xl mx-auto space-y-10">
+                  <div className="max-w-2xl mx-auto space-y-8">
                     {reading.verses.map((ayah, index) => (
-                      <div key={index} className="group border-b border-slate-50 pb-10 last:border-0 hover:bg-slate-50/30 transition-colors px-2 rounded-xl">
-                        <div className="flex justify-between items-center mb-6">
-                          <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-3 py-1 rounded-full shadow-sm border border-emerald-100">
-                            {ayah.surah.englishName} • {ayah.numberInSurah}
-                          </span>
+                      <div key={index} className="group flex flex-col items-end border-b border-slate-50 pb-8 last:border-0 hover:bg-slate-50/30 transition-all px-4 py-4 rounded-2xl">
+                        <div className="w-full flex justify-between items-center mb-4">
+                          <div className="flex items-center space-x-2">
+                            <div className="w-8 h-8 flex items-center justify-center bg-emerald-100 text-emerald-700 rounded-full font-bold text-[10px] shadow-sm border border-emerald-200">
+                              {ayah.numberInSurah}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                              {ayah.surah.englishName}
+                            </span>
+                          </div>
+                          
                           <button 
                              onClick={() => {
                                navigator.clipboard.writeText(ayah.text);
-                               // Simple toast feedback logic could go here
                              }}
-                             className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white rounded-full text-slate-400 hover:text-emerald-600 shadow-sm transition-all"
+                             className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-all"
                              title="Copy Ayah"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" /></svg>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                            </svg>
                           </button>
                         </div>
-                        <p className="arabic-font text-3xl sm:text-5xl text-right leading-[1.8] text-slate-800 dir-rtl antialiased">
-                          {ayah.text}
-                        </p>
+                        
+                        <div className="w-full" dir="rtl">
+                          <p className="arabic-font text-2xl sm:text-3xl text-slate-800 leading-[2.2] antialiased text-right">
+                            {ayah.text}
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
