@@ -6,9 +6,20 @@ interface HeaderProps {
   onNavigate: (view: 'all' | 'bookmarks') => void;
   onFindClick: () => void;
   bookmarkCount: number;
+  isFollowing: boolean;
+  onToggleFollow: () => void;
+  followersCount: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ activeView, onNavigate, onFindClick, bookmarkCount }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  activeView, 
+  onNavigate, 
+  onFindClick, 
+  bookmarkCount,
+  isFollowing,
+  onToggleFollow,
+  followersCount
+}) => {
   return (
     <header className="sticky top-0 z-50 bg-emerald-900 text-white shadow-lg">
       <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
@@ -23,34 +34,55 @@ const Header: React.FC<HeaderProps> = ({ activeView, onNavigate, onFindClick, bo
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Al-Quran Companion</h1>
-            <p className="text-xs text-emerald-200 uppercase tracking-widest">30 Juz Digital Library</p>
+            <p className="text-xs text-emerald-200 uppercase tracking-widest">By Zurisham Yunus</p>
           </div>
         </div>
         
-        <nav className="flex space-x-6 text-sm font-medium items-center">
-          <button 
-            onClick={() => onNavigate('all')}
-            className={`transition-colors py-2 border-b-2 ${activeView === 'all' ? 'text-amber-400 border-amber-400' : 'text-emerald-100 border-transparent hover:text-white'}`}
-          >
-            Home
-          </button>
-          <button 
-            onClick={onFindClick}
-            className="text-emerald-100 hover:text-white transition-colors py-2 border-b-2 border-transparent"
-          >
-            Find Juz
-          </button>
-          <button 
-            onClick={() => onNavigate('bookmarks')}
-            className={`transition-colors py-2 border-b-2 flex items-center space-x-2 ${activeView === 'bookmarks' ? 'text-amber-400 border-amber-400' : 'text-emerald-100 border-transparent hover:text-white'}`}
-          >
-            <span>Bookmarks</span>
-            {bookmarkCount > 0 && (
-              <span className="bg-amber-500 text-emerald-900 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                {bookmarkCount}
-              </span>
-            )}
-          </button>
+        <nav className="flex flex-wrap justify-center items-center gap-4 md:gap-8 text-sm font-medium">
+          <div className="flex space-x-6 items-center">
+            <button 
+              onClick={() => onNavigate('all')}
+              className={`transition-colors py-2 border-b-2 ${activeView === 'all' ? 'text-amber-400 border-amber-400' : 'text-emerald-100 border-transparent hover:text-white'}`}
+            >
+              Home
+            </button>
+            <button 
+              onClick={onFindClick}
+              className="text-emerald-100 hover:text-white transition-colors py-2 border-b-2 border-transparent"
+            >
+              Find Juz
+            </button>
+            <button 
+              onClick={() => onNavigate('bookmarks')}
+              className={`transition-colors py-2 border-b-2 flex items-center space-x-2 ${activeView === 'bookmarks' ? 'text-amber-400 border-amber-400' : 'text-emerald-100 border-transparent hover:text-white'}`}
+            >
+              <span>Bookmarks</span>
+              {bookmarkCount > 0 && (
+                <span className="bg-amber-500 text-emerald-900 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                  {bookmarkCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          <div className="h-8 w-px bg-emerald-800 hidden md:block"></div>
+
+          <div className="flex items-center space-x-3 bg-emerald-950/50 px-3 py-1.5 rounded-full border border-emerald-800">
+            <div className="flex flex-col items-center">
+              <span className="text-[10px] text-emerald-400 leading-none">FOLLOWERS</span>
+              <span className="text-xs font-bold text-amber-400 leading-none">{followersCount.toLocaleString()}</span>
+            </div>
+            <button 
+              onClick={onToggleFollow}
+              className={`px-4 py-1 rounded-full text-xs font-bold transition-all ${
+                isFollowing 
+                  ? 'bg-emerald-800 text-emerald-300 border border-emerald-700' 
+                  : 'bg-amber-400 text-emerald-900 hover:bg-amber-300'
+              }`}
+            >
+              {isFollowing ? 'Following' : 'Follow'}
+            </button>
+          </div>
         </nav>
       </div>
     </header>

@@ -8,11 +8,20 @@ interface JuzDetailProps {
   onClose: () => void;
   isBookmarked: boolean;
   onToggleBookmark: (id: number) => void;
+  isLiked: boolean;
+  onToggleLike: (id: number) => void;
 }
 
 type TabType = 'quran' | 'insights';
 
-const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onToggleBookmark }) => {
+const JuzDetail: React.FC<JuzDetailProps> = ({ 
+  juz, 
+  onClose, 
+  isBookmarked, 
+  onToggleBookmark,
+  isLiked,
+  onToggleLike
+}) => {
   const [activeTab, setActiveTab] = useState<TabType>('quran');
   const [insight, setInsight] = useState<InsightState>({
     loading: false,
@@ -32,13 +41,11 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
 
   useEffect(() => {
     if (juz) {
-      // Reset states
       setIsPlaying(false);
       setCurrentTime(0);
       setDuration(0);
       setActiveTab('quran');
       
-      // Fetch Insight
       const fetchInsight = async () => {
         setInsight({ loading: true, content: '', error: null });
         try {
@@ -49,7 +56,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
         }
       };
 
-      // Fetch Quran Text
       const fetchVerses = async () => {
         setReading({ loading: true, verses: [], error: null });
         try {
@@ -89,6 +95,8 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
 
   if (!juz) return null;
 
+  const totalLikes = juz.baseLikes + (isLiked ? 1 : 0);
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md overflow-hidden">
       <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[95vh]">
@@ -97,11 +105,21 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
         <div className="relative shrink-0 h-32 sm:h-40 bg-emerald-800 bg-islamic-pattern p-6 flex flex-col justify-end shadow-md">
           <div className="absolute top-4 right-4 flex space-x-2 z-10">
             <button 
+              onClick={() => onToggleLike(juz.id)}
+              className={`p-2.5 rounded-full transition-all active:scale-90 shadow-sm flex items-center space-x-1 ${isLiked ? 'bg-red-500 text-white' : 'bg-white/10 text-white hover:bg-white/20'}`}
+              title="Like this Juz"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className={`h-5 w-5 ${isLiked ? 'fill-current' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              <span className="text-xs font-bold">{totalLikes.toLocaleString()}</span>
+            </button>
+            <button 
               onClick={() => onToggleBookmark(juz.id)}
               className={`p-2.5 rounded-full transition-all active:scale-90 shadow-sm ${isBookmarked ? 'bg-amber-400 text-emerald-900' : 'bg-white/10 text-white hover:bg-white/20'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={isBookmarked ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
             </button>
             <button 
@@ -144,13 +162,9 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
           </button>
         </div>
         
-        {/* Scrollable Content */}
         <div className="flex-grow overflow-y-auto bg-white relative">
-          
-          {/* TAB: QURAN (Read & Listen Combined) */}
           {activeTab === 'quran' && (
             <div className="flex flex-col min-h-full">
-              {/* Sticky Audio Player */}
               <div className="sticky top-0 z-20 bg-emerald-50/95 backdrop-blur-sm border-b border-emerald-100 p-4 sm:p-5 shadow-sm">
                 <audio 
                   ref={audioRef}
@@ -203,7 +217,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
                 </div>
               </div>
 
-              {/* Quran Text Content */}
               <div className="p-4 sm:p-8 pt-4">
                 {reading.loading ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
@@ -254,7 +267,6 @@ const JuzDetail: React.FC<JuzDetailProps> = ({ juz, onClose, isBookmarked, onTog
             </div>
           )}
 
-          {/* TAB: INSIGHTS */}
           {activeTab === 'insights' && (
             <div className="p-4 sm:p-8 max-w-3xl mx-auto">
               {insight.loading ? (

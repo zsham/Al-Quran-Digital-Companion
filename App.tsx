@@ -10,10 +10,26 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJuz, setSelectedJuz] = useState<JuzData | null>(null);
   const [viewMode, setViewMode] = useState<'all' | 'bookmarks'>('all');
+  
+  // Storage for Bookmarks
   const [bookmarks, setBookmarks] = useState<number[]>(() => {
     const saved = localStorage.getItem('quran_bookmarks');
     return saved ? JSON.parse(saved) : [];
   });
+
+  // Storage for User Likes
+  const [userLikes, setUserLikes] = useState<number[]>(() => {
+    const saved = localStorage.getItem('quran_likes');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Storage for Follower status
+  const [isFollowing, setIsFollowing] = useState<boolean>(() => {
+    return localStorage.getItem('creator_following') === 'true';
+  });
+
+  // Base follower count (simulated)
+  const [followersCount, setFollowersCount] = useState<number>(12450);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,11 +37,31 @@ const App: React.FC = () => {
     localStorage.setItem('quran_bookmarks', JSON.stringify(bookmarks));
   }, [bookmarks]);
 
+  useEffect(() => {
+    localStorage.setItem('quran_likes', JSON.stringify(userLikes));
+  }, [userLikes]);
+
+  useEffect(() => {
+    localStorage.setItem('creator_following', String(isFollowing));
+  }, [isFollowing]);
+
   const toggleBookmark = (id: number) => {
     setBookmarks(prev => 
       prev.includes(id) ? prev.filter(b => b !== id) : [...prev, id]
     );
   };
+
+  const toggleLike = (id: number) => {
+    setUserLikes(prev => 
+      prev.includes(id) ? prev.filter(l => l !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleFollow = () => {
+    setIsFollowing(prev => !prev);
+  };
+
+  const currentFollowers = followersCount + (isFollowing ? 1 : 0);
 
   const handleFindClick = () => {
     setViewMode('all');
@@ -67,6 +103,9 @@ const App: React.FC = () => {
         onNavigate={handleNavigate}
         onFindClick={handleFindClick}
         bookmarkCount={bookmarks.length}
+        isFollowing={isFollowing}
+        onToggleFollow={handleToggleFollow}
+        followersCount={currentFollowers}
       />
       
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -81,7 +120,7 @@ const App: React.FC = () => {
           </h2>
           <p className="text-slate-500 max-w-2xl mx-auto text-lg">
             {viewMode === 'all' 
-              ? "A comprehensive digital companion for exploring all 30 Juz of the Quran. Search, reflect, and deepen your understanding with AI-powered summaries."
+              ? "A comprehensive digital companion for exploring all 30 Juz of the Quran. Join thousands of users in searching, reflecting, and deepening spiritual understanding."
               : "Access your frequently visited Juz and spiritual reflections in one place."
             }
           </p>
@@ -114,6 +153,7 @@ const App: React.FC = () => {
                 key={juz.id} 
                 juz={juz} 
                 onClick={(j) => setSelectedJuz(j)} 
+                userLiked={userLikes.includes(juz.id)}
               />
             ))
           ) : (
@@ -176,6 +216,8 @@ const App: React.FC = () => {
         onClose={() => setSelectedJuz(null)} 
         isBookmarked={selectedJuz ? bookmarks.includes(selectedJuz.id) : false}
         onToggleBookmark={toggleBookmark}
+        isLiked={selectedJuz ? userLikes.includes(selectedJuz.id) : false}
+        onToggleLike={toggleLike}
       />
     </div>
   );

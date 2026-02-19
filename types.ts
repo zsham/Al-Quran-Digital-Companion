@@ -7,6 +7,7 @@ export interface JuzData {
   endSurah: string;
   link: string;
   description: string;
+  baseLikes: number;
 }
 
 export interface InsightState {
