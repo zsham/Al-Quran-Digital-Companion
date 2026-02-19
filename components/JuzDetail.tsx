@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { JuzData, InsightState, Verse, ReadingState } from '../types';
-import { getJuzSummary } from '../services/geminiService';
+import { getJuzSummary, translateVerse } from '../services/geminiService';
 
 interface JuzDetailProps {
   juz: JuzData | null;
@@ -14,6 +14,15 @@ interface JuzDetailProps {
 
 type TabType = 'quran' | 'insights';
 
+const LANGUAGES = [
+  { code: 'English', name: 'English' },
+  { code: 'Malay', name: 'Bahasa Melayu' },
+  { code: 'Indonesian', name: 'Bahasa Indonesia' },
+  { code: 'French', name: 'Français' },
+  { code: 'Turkish', name: 'Türkçe' },
+  { code: 'Urdu', name: 'اردو' },
+];
+
 const JuzDetail: React.FC<JuzDetailProps> = ({ 
   juz, 
   onClose, 
@@ -23,6 +32,7 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
   onToggleLike
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('quran');
+  const [targetLanguage, setTargetLanguage] = useState('English');
   const [insight, setInsight] = useState<InsightState>({
     loading: false,
     content: '',
@@ -33,6 +43,9 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
     verses: [],
     error: null
   });
+
+  // Local state for translations: { [ayahNumber]: { text, loading } }
+  const [verseTranslations, setVerseTranslations] = useState<Record<number, { text: string; loading: boolean }>>({});
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -45,6 +58,7 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
       setCurrentTime(0);
       setDuration(0);
       setActiveTab('quran');
+      setVerseTranslations({});
       
       const fetchInsight = async () => {
         setInsight({ loading: true, content: '', error: null });
@@ -85,6 +99,23 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
       }
       setIsPlaying(!isPlaying);
     }
+  };
+
+  const handleTranslate = async (ayahNumber: number, text: string) => {
+    // If already translating or translated, don't do anything
+    if (verseTranslations[ayahNumber]?.loading) return;
+
+    setVerseTranslations(prev => ({
+      ...prev,
+      [ayahNumber]: { text: prev[ayahNumber]?.text || '', loading: true }
+    }));
+
+    const result = await translateVerse(text, targetLanguage);
+
+    setVerseTranslations(prev => ({
+      ...prev,
+      [ayahNumber]: { text: result, loading: false }
+    }));
   };
 
   const formatTime = (time: number) => {
@@ -145,21 +176,38 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <div className="bg-slate-50 border-b border-slate-200 px-4 flex space-x-1 sm:space-x-6 shrink-0 overflow-x-auto">
-          <button 
-            onClick={() => setActiveTab('quran')}
-            className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'quran' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <span className="text-lg">📖</span>
-            <span>Quran (Read & Listen)</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('insights')}
-            className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'insights' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
-          >
-            <span className="text-lg">✨</span>
-            <span>AI Insights</span>
-          </button>
+        <div className="bg-slate-50 border-b border-slate-200 px-4 flex justify-between items-center shrink-0 overflow-x-auto">
+          <div className="flex space-x-1 sm:space-x-6">
+            <button 
+              onClick={() => setActiveTab('quran')}
+              className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'quran' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              <span className="text-lg">📖</span>
+              <span>Quran</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('insights')}
+              className={`px-4 py-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center space-x-2 ${activeTab === 'insights' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              <span className="text-lg">✨</span>
+              <span>AI Insights</span>
+            </button>
+          </div>
+
+          {activeTab === 'quran' && (
+            <div className="flex items-center space-x-2 px-4 py-2 bg-emerald-50 rounded-lg border border-emerald-100 mr-2">
+              <span className="text-[10px] font-bold text-emerald-700 uppercase">Translate to:</span>
+              <select 
+                value={targetLanguage}
+                onChange={(e) => setTargetLanguage(e.target.value)}
+                className="bg-transparent text-xs font-bold text-emerald-800 outline-none cursor-pointer"
+              >
+                {LANGUAGES.map(lang => (
+                  <option key={lang.code} value={lang.code}>{lang.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         
         <div className="flex-grow overflow-y-auto bg-white relative">
@@ -241,24 +289,55 @@ const JuzDetail: React.FC<JuzDetailProps> = ({
                             </span>
                           </div>
                           
-                          <button 
-                             onClick={() => {
-                               navigator.clipboard.writeText(ayah.text);
-                             }}
-                             className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-all"
-                             title="Copy Ayah"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
-                            </svg>
-                          </button>
+                          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all">
+                            <button 
+                               onClick={() => handleTranslate(ayah.number, ayah.text)}
+                               className={`p-1.5 rounded-lg transition-all flex items-center space-x-1 ${verseTranslations[ayah.number]?.text ? 'text-emerald-600 bg-emerald-50' : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'}`}
+                               title="Translate Ayah"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" />
+                              </svg>
+                              <span className="text-[9px] font-bold uppercase">Translate</span>
+                            </button>
+                            <button 
+                               onClick={() => {
+                                 navigator.clipboard.writeText(ayah.text);
+                               }}
+                               className="p-1.5 hover:bg-emerald-50 rounded-lg text-slate-400 hover:text-emerald-600 transition-all"
+                               title="Copy Ayah"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                              </svg>
+                            </button>
+                          </div>
                         </div>
                         
-                        <div className="w-full" dir="rtl">
+                        <div className="w-full mb-3" dir="rtl">
                           <p className="arabic-font text-2xl sm:text-3xl text-slate-800 leading-[2.2] antialiased text-right">
                             {ayah.text}
                           </p>
                         </div>
+
+                        {/* Translation Display */}
+                        {(verseTranslations[ayah.number]?.text || verseTranslations[ayah.number]?.loading) && (
+                          <div className="w-full bg-slate-50/80 p-4 rounded-xl border border-slate-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {verseTranslations[ayah.number]?.loading ? (
+                              <div className="flex items-center space-x-2 text-slate-400">
+                                <div className="w-3 h-3 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-xs italic">AI Translating to {targetLanguage}...</span>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col">
+                                <span className="text-[9px] font-black text-emerald-600 uppercase mb-1">{targetLanguage} Translation</span>
+                                <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                  {verseTranslations[ayah.number]?.text}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
